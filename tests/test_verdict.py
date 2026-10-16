@@ -10,7 +10,6 @@ SCRIPTS_DIR = os.path.join(REPO_ROOT, "skills", "facet", "scripts")
 if SCRIPTS_DIR not in sys.path:
     sys.path.insert(0, SCRIPTS_DIR)
 
-import verdict
 from verdict import VerdictError, evidence_found, load_schema, parse_response, validate
 
 
@@ -93,6 +92,8 @@ class TestVerdictParser(unittest.TestCase):
             with self.assertRaises(VerdictError) as cm:
                 parse_response(bad_text)
             self.assertEqual(cm.exception.kind, "parse_error")
+            self.assertIsInstance(cm.exception.__cause__, json.JSONDecodeError)
+            self.assertIn(cm.exception.__cause__.msg, str(cm.exception))
 
 
 class TestVerdictValidate(unittest.TestCase):
@@ -228,6 +229,40 @@ class TestVerdictValidate(unittest.TestCase):
         v["extra_custom_field"] = "arbitrary value"
         result = validate(v)
         self.assertIs(result, v)
+
+    def test_validate_unsupported_keyword_in_unvisited_branch(self):
+        """未走訪分支中的不支援關鍵字在 schema 檢查階段丟出 ValueError。"""
+        custom_schema = {
+            "type": "object",
+            "properties": {
+                "opt": {
+                    "type": "string",
+                    "additionalProperties": False,
+                }
+            },
+        }
+        with self.assertRaises(ValueError) as cm:
+            validate({}, schema=custom_schema)
+        self.assertNotIsInstance(cm.exception, VerdictError)
+        self.assertIn("additionalProperties", str(cm.exception))
+        self.assertIn("$.opt", str(cm.exception))
+
+    def test_validate_non_dict_schema_round2(self):
+        """第二輪傳入非 dict schema 丟出 ValueError 而非 AttributeError。"""
+        with self.assertRaises(ValueError) as cm:
+            validate({}, schema="invalid", round_no=2)
+        self.assertNotIsInstance(cm.exception, VerdictError)
+
+    def test_validate_enum_int_rejects_bool(self):
+        """schema enum 含整數 1 時，傳入 1 通過，傳入 True 丟出 schema_error。"""
+        enum_schema = {"enum": [1]}
+        result = validate(1, schema=enum_schema)
+        self.assertEqual(result, 1)
+
+        with self.assertRaises(VerdictError) as cm:
+            validate(True, schema=enum_schema)
+        self.assertEqual(cm.exception.kind, "schema_error")
+        self.assertIn("$", str(cm.exception))
 
 
 class TestEvidenceFound(unittest.TestCase):
