@@ -24,7 +24,7 @@
 | agy 1.4.0 `--json-schema` | rgs 的 `review.py` 以 `type`、`properties`、`required`、`enum`、`items` 組成的 schema 實測可用，結果在 JSON 外殼的 `structured_output` | verdict schema 只用這個子集（D-1） |
 | 交接文件 §5 的 verdict 格式 | 頂層 `verdict`、`findings`、`coverage`、`limitations`；finding 有 `id`、`severity`、`evidence`、`issue`、`suggestion` | R-1 的欄位 |
 | PLAN §4.5 | 第二輪起多輸出 `resolved: [{id, status: resolved\|unresolved, note}]`，只在第二輪起必填 | `resolved` 在 schema 中選填，由 `verdict.py` 依輪次檢查（D-2） |
-| repo 現況 | 只有 `docs/`，沒有程式與測試 | M1 建立 `tests/` 與第一個測試檔 |
+| repo 現況（v1 設計時） | 只有 `docs/`，沒有程式與測試 | M1 建立 `tests/` 與第一個測試檔 |
 
 ## 決策紀錄
 
