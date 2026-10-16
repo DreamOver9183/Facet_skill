@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "language": {
+    "docs": "zh-TW",
+    "commits": "zh-TW",
+    "prompts": "zh-TW"
+  },
+  "knowledge_base": [
+    "CLAUDE.md"
+  ],
+  "base_branch": "ccr-a267cbbf-nsxfdf",
+  "commands": {
+    "quick": [
+      "python -m unittest discover -s tests -v"
+    ],
+    "verify": [
+      "python -m unittest discover -s tests -v"
+    ]
+  },
+  "worktree_copy": [],
+  "secrets": {
+    "deny_read": [
+      "*.jks",
+      "*.key",
+      "*.keystore",
+      "*.pem",
+      "*_KEY_*",
+      ".env",
+      ".env.*"
+    ],
+    "patterns": []
+  }
+}
