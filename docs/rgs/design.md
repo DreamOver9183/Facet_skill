@@ -12,8 +12,8 @@
 
 | 里程碑 | 狀態 | 分支／PR | 測試數 | 備註 |
 | :-- | :-- | :-- | :-- | :-- |
-| M1 | 未開始 | `feat/m1-verdict-schema` | | |
-| M2 | 未開始 | `feat/m2-verdict-parser` | | 堆疊在 M1 上 |
+| M1 | 已合併 | `feat/m1-verdict-schema`／#1 | 6 | agy 合併閘門 PASS，無意見 |
+| M2 | 審查中 | `feat/m2-verdict-parser`／#2 | 31（累計） | 原本堆疊在 M1 上；M1 合併後已 retarget 到 base |
 
 狀態只用：未開始、實作中、審查中、待合併、已合併、延後。
 
@@ -76,8 +76,8 @@ tests/
 
 | 需求 | 里程碑 | 測試 | PR |
 | :-- | :-- | :-- | :-- |
-| R-1 | M1 | `tests/test_verdict_schema.py` | |
-| R-2 | M2 | `tests/test_verdict.py` | |
+| R-1 | M1 | `tests/test_verdict_schema.py` | #1 |
+| R-2 | M2 | `tests/test_verdict.py` | #2 |
 
 ## 教訓清單
 
