@@ -47,7 +47,7 @@
 
 ## 設計模式
 
-（尚無）
+- 驗證器分兩段：先靜態檢查整個 schema（不支援的關鍵字、型別名稱、結構），再比對資料；範例是 `skills/facet/scripts/verdict.py` 的 `_check_schema` 與 `_validate_node`。
 
 ## 踩坑紀錄
 
