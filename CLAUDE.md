@@ -51,6 +51,7 @@
 ## 設計模式
 
 - 驗證器分兩段：先靜態檢查整個 schema（不支援的關鍵字、型別名稱、結構），再比對資料；範例是 `skills/facet/scripts/verdict.py` 的 `_check_schema` 與 `_validate_node`。
+- 範本佔位符用單次 regex 替換：pattern 只認得固定的佔位符名稱，一次 `re.sub` 完成；範例是 `skills/facet/scripts/prompt.py` 的 `_PLACEHOLDER`。不用 `str.format`（範本含 JSON 的大括號），也不連續呼叫 `str.replace`（計畫內容可能含佔位符字樣，會被二次替換）。
 
 ## 踩坑紀錄
 
