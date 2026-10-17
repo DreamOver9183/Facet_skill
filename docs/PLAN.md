@@ -2,7 +2,7 @@
 
 > 依據：[`docs/handoff.md`](handoff.md)（下稱「交接文件」，§ 編號沿用該文件）
 > 撰寫日期：2026-10-14
-> 狀態：草案，等使用者確認 §3 的決策點後開始 Phase 1
+> 狀態：§3 的 D1 與 D7 已確認（2026-10-17），Phase 1 預檢結果見 [`docs/preflight-results.md`](preflight-results.md)
 
 ---
 
@@ -81,7 +81,7 @@ description: >-
 - **plugin 的 skill 有命名空間**（`/plugin名:facet`）：不會硬衝突，但兩者都會出現在 `/` 選單，description 若相近會互搶觸發，所以仍要回報。
 - 同名的 skill 和 `.claude/commands/facet.md` 並存時，skill 優先。
 
-**仍需在本機做的事**：本機的 `~/.claude/skills`、已安裝的 plugin、企業 managed 設定和雲端是不同的，雲端的結果不能代表本機。因此新增 `scripts/check_name_conflict.sh`，由 `install.sh` 先呼叫，有衝突就以非零結束並列出衝突來源，**絕不覆蓋**。它檢查：
+**仍需在本機做的事**：本機的 `~/.claude/skills`、已安裝的 plugin、企業 managed 設定和雲端是不同的，雲端的結果不能代表本機。因此新增 `scripts/check_name_conflict.py`，由 `install.py` 先呼叫，有衝突就以非零結束並列出衝突來源，**絕不覆蓋**。它檢查：
 
 1. `~/.claude/skills/*/`：目錄名與 `SKILL.md` 的 `name:`，含 `synced/*/*/`
 2. `~/.claude/commands/facet.md`、`<專案>/.claude/commands/facet.md`
@@ -90,7 +90,7 @@ description: >-
 5. 企業 managed 目錄。實際路徑依作業系統而定，**Phase 1 先查官方文件確認**，不寫死猜測的路徑
 6. 內建指令：腳本做不到，改列人工步驟。在本機 Claude Code 輸入 `/facet`，確認選單中沒有任何項目
 
-**「已是我們自己裝的」判斷**：`install.sh` 會在目標資料夾寫入標記檔 `.facet-install.json`，內容包含來源 repo 與 commit。重裝時只覆蓋帶有這個標記的資料夾，其他一律視為衝突。
+**「已是我們自己裝的」判斷**：`install.py` 會在目標資料夾寫入標記檔 `.facet-install.json`，內容包含來源 repo 與 commit。重裝時只覆蓋帶有這個標記的資料夾，其他一律視為衝突。
 
 ---
 
@@ -115,12 +115,13 @@ description: >-
 
 | ID | 問題 | 建議 | 理由 |
 |---|---|---|---|
-| **D1** | 視角和輪次的關係。交接文件 §3.4 寫「每輪用不同視角」，§4 卻寫 `REVIEW_LENSES` 是「每輪的審查視角」 | **每輪依序跑完三個視角**（一個視角一次呼叫）。三個都 APPROVED 才算收斂；只要計畫有改，三個視角在下一輪全部重審 | 若每輪只換一個視角，最多 3 輪時，最終版本永遠不會被三個視角都審過，這和「計畫一改 APPROVED 就作廢」衝突。代價是最多 9 次呼叫（最壞情況約 27 分鐘），Flash 通常快得多 |
-| **D2** | skill 原始檔放哪、怎麼安裝 | 以這個 repo 為原始碼（`skills/facet/`），由 `install.sh` 做完衝突檢查後**複製**到 `~/.claude/skills/facet/` | 有版本控制，雲端也能開發。目錄結構和 plugin 相容，日後可直接加 `.claude-plugin/plugin.json` 打包。先不用 symlink，因為還沒確認 Claude Code 對 symlink 的行為 |
+| **D1**（已確認，2026-10-17） | 視角和輪次的關係。交接文件 §3.4 寫「每輪用不同視角」，§4 卻寫 `REVIEW_LENSES` 是「每輪的審查視角」 | **每輪依序跑完三個視角**（一個視角一次呼叫）。三個都 APPROVED 才算收斂；只要計畫有改，三個視角在下一輪全部重審 | 若每輪只換一個視角，最多 3 輪時，最終版本永遠不會被三個視角都審過，這和「計畫一改 APPROVED 就作廢」衝突。代價是最多 9 次呼叫（最壞情況約 27 分鐘），Flash 通常快得多 |
+| **D2** | skill 原始檔放哪、怎麼安裝 | 以這個 repo 為原始碼（`skills/facet/`），由 `install.py` 做完衝突檢查後**複製**到 `~/.claude/skills/facet/` | 有版本控制，雲端也能開發。目錄結構和 plugin 相容，日後可直接加 `.claude-plugin/plugin.json` 打包。先不用 symlink，因為還沒確認 Claude Code 對 symlink 的行為 |
 | **D3** | 審查摘要放哪（交接文件 §11 問題 3） | 「審查摘要」（§8 格式）放在**計畫檔末尾**，逐輪紀錄放計畫檔附錄，`agy` 原始輸出放在 repo 外的暫存目錄 | Plan 模式只能寫計畫檔。ExitPlanMode 呈現的就是計畫檔，使用者一次就能看到全部 |
 | **D4** | `agy` 失敗時怎麼辦 | 同一模型**重試 1 次**（不算一輪），仍失敗就停止迴圈，用 AskUserQuestion 讓你選「不經跨模型審查直接交付（摘要標示「未審查」）」或「中止」 | 交接文件規定失敗不能算核准、不能偷換模型。#594 顯示重試會耗額度，所以只重試一次 |
 | **D5** | 唯讀保障（交接文件 §11 問題 1） | 採多層防護（§4.7）。若 Phase 1 證實 `agy -p` 不加任何旗標就能寫到工作目錄以外，就停下來討論 | `--sandbox` 不保證唯讀，只能靠多層防護加事後偵測 |
-| **D6** | Gemini 4 開放後是否改雙審查者（交接文件 §11 問題 2） | **這次不做**，但保留擴充點：參數設計成日後可改成 `REVIEWER_MODELS` 清單，多個模型**依序**呼叫 | 目前只有一個模型可用。#573 顯示並行會卡住 |
+| **D6**（已確認，2026-10-17） | Gemini 4 開放後是否改雙審查者（交接文件 §11 問題 2） | **這次不做**，但保留擴充點：參數設計成日後可改成 `REVIEWER_MODELS` 清單，多個模型**依序**呼叫。預檢發現 Gemini 4 已開放，`REVIEWER_MODEL` 改用 `gemini-4-argon-high` | #573 顯示並行會卡住；雙審查者會讓每輪呼叫次數加倍 |
+| **D7**（已確認，2026-10-17） | 目標平台。本計畫原本以 macOS／Linux 為前提（bash 腳本、`/dev/null`、SIGTERM／SIGKILL、`python3`），但實際開發機是 Windows 11 | **跨平台（Windows、macOS、Linux）**：repo 工具與安裝腳本全部改寫成只用標準函式庫的 Python（`scripts/check_name_conflict.py`、`scripts/install.py`）；逾時與終止 process 依作業系統分別處理（Windows 用 `CREATE_NEW_PROCESS_GROUP` 加 `taskkill /T /F`，POSIX 用 `start_new_session` 加 `killpg`）；stdin 一律用 `subprocess.DEVNULL`；直譯器名稱不寫死 `python3`（Windows 通常只有 `python`） | 使用者的主要環境是 Windows；Python 腳本可以在三個平台用同一份程式與測試 |
 
 > D1 會改變迴圈的實作，**Phase 2 開工前需要你確認**。其他項目若沒有異議，就照建議做。
 
@@ -137,7 +138,7 @@ Facet_skill/
 │   ├── handoff.md                # 原交接文件
 │   ├── PLAN.md                   # 本計畫
 │   └── preflight-results.md      # Phase 1 產出（本機實測紀錄）
-├── skills/facet/                 # ← install.sh 複製這個資料夾
+├── skills/facet/                 # ← install.py 複製這個資料夾
 │   ├── SKILL.md                  # 參數置頂、硬規則置頂、流程 checklist
 │   ├── references/
 │   │   ├── review-prompt.md      # §5 範本 + 三視角定義 + 第二輪起的附加段
@@ -147,8 +148,8 @@ Facet_skill/
 │       ├── facet_review.py       # 呼叫 agy 的唯一入口（只用 Python 3 標準函式庫）
 │       └── guard_agy.py          # PreToolUse hook：擋掉繞過包裝腳本的 agy 呼叫（選用、建議）
 ├── scripts/
-│   ├── check_name_conflict.sh    # §1.2
-│   └── install.sh                # 衝突檢查 → 複製 → 寫入標記檔 → 提示驗證
+│   ├── check_name_conflict.py    # §1.2
+│   └── install.py                # 衝突檢查 → 複製 → 寫入標記檔 → 提示驗證
 └── tests/
     ├── fake_agy/                 # 測試替身：approve / revise / garbage / empty / sleep / touch_repo / echo_model
     ├── fixtures/sample-cli/      # 試跑用的小專案（約 20 行的 argparse CLI）
@@ -161,11 +162,11 @@ Facet_skill/
 
 ```markdown
 ## 參數（改這裡就好）
-REVIEWER_MODEL = <預檢確認的 ID>   # Gemini 4 開放後只改這行
+REVIEWER_MODEL = gemini-4-argon-high   # 預檢後決定（2026-10-17）；換模型只改這行
 MAX_ROUNDS     = 3
 REVIEW_LENSES  = logic,gaps,verifiability
-AGY_TIMEOUT    = 180               # 秒；Bash 工具 timeout 要設 (AGY_TIMEOUT+60)*1000 ms
-RUN_DIR        = ${TMPDIR:-/tmp}/facet/${CLAUDE_SESSION_ID}
+AGY_TIMEOUT    = 300               # 秒（預檢最慢 155 秒）；Bash 工具 timeout 要設 (AGY_TIMEOUT+60)*1000 ms
+RUN_DIR        = <系統暫存目錄>/facet/${CLAUDE_SESSION_ID}   # 由 facet_review.py 用 tempfile.gettempdir() 決定
 
 ## 硬規則（每一步都適用）
 - 只透過 scripts/facet_review.py 呼叫 agy；不得直接執行 agy，不得加入任何放寬權限的旗標
@@ -183,7 +184,7 @@ RUN_DIR        = ${TMPDIR:-/tmp}/facet/${CLAUDE_SESSION_ID}
 9. 寫入審查摘要與附錄 → ExitPlanMode
 ```
 
-`allowed-tools` 預先核准 `Bash(python3 *facet_review.py*)`，讓 Plan 模式下不會每次都跳確認。**它在 Plan 模式下是否生效，由 Phase 1 的 A7 實測**。若不生效，README 改成教你在 `settings.json` 加權限規則。
+`allowed-tools` 預先核准 `Bash(python *facet_review.py*)` 與 `Bash(python3 *facet_review.py*)`（Windows 通常只有 `python`，見 D7），讓 Plan 模式下不會每次都跳確認。**它在 Plan 模式下是否生效，移到 Phase 3 安裝後實測（A7，2026-10-17 決定）**。README 同時附上在 `settings.json` 加權限規則的備案。
 
 ### 4.3 `facet_review.py` 的介面
 
@@ -203,11 +204,11 @@ python3 facet_review.py --self-check
 
 1. 讀計畫本文，做密鑰掃描（§4.8）。有疑似密鑰就回傳 `secret_suspected`，**不送出**。
 2. 用 `references/review-prompt.md` 組出 prompt，寫入 `RUN_DIR/r{N}-{lens}/prompt.md`。
-3. 對 `--repo` 做完整性快照，記錄 `git status --porcelain=v1 -uall` 加上 `git diff` 的雜湊。不是 git repo 時，改用時間戳記檔加 `find -newer`。
-4. 在**全新的空目錄**（`RUN_DIR/r{N}-{lens}/ws/`）裡執行 agy：`agy -p … --model … [--output-format json] [--json-schema …]`。stdin 從檔案或 `/dev/null` 讀，使用新的 process group，逾時時先送 SIGTERM，10 秒後送 SIGKILL。實際用哪些旗標，依 Phase 1 結果寫死在腳本裡。
-5. 執行前後都檢查禁止旗標：`--dangerously-skip-permissions`、`--yolo`、`--mode auto`、`--mode accept-edits` 等，出現就直接拒絕。
-6. 保存 `stdout.txt`、`stderr.txt`、`meta.json`。`meta.json` 記錄要求的模型、實際回報的模型（找不到就填 `null`）、agy 版本、exit code、耗時、conversation_id、完整性檢查結果、`ws/` 中被新增的檔案、實際執行的 agy 執行檔路徑。
-7. 解析步驟：取出 JSON 外殼的 `response` → 去掉 code fence → `json.loads` → 依 schema 驗證 → 對每條 finding 檢查 `evidence` 是否出現在計畫本文（空白正規化後比對），結果寫入 `evidence_found`。
+3. 對 `--repo` 做完整性快照，記錄 `git status --porcelain=v1 -uall` 加上 `git diff` 的雜湊。不是 git repo 時，改用 Python 走訪目錄、比對修改時間（不依賴 `find`，見 D7）。
+4. 在**全新的空目錄**（`RUN_DIR/r{N}-{lens}/ws/`）裡放好唯讀 hook（§4.7），再執行 agy。旗標依預檢結果寫死：`agy -p <prompt> --model <REVIEWER_MODEL> --output-format json --disable-slash-commands --print-timeout <AGY_TIMEOUT>s --json-schema <verdict.schema.json> --log-file <ws 外的 agy.log>`。計畫放在 `-p` 參數裡（預檢 A4 最快、最便宜）；prompt 超過 30,000 字元就回傳 `plan_too_long`，不送出（Windows 命令列上限約 32K）。stdin 一律 `subprocess.DEVNULL`。逾時時終止整個 process 樹：Windows 用 `CREATE_NEW_PROCESS_GROUP` 加 `taskkill /T /F`，POSIX 用 `start_new_session` 加 `killpg`（先 SIGTERM，10 秒後 SIGKILL）。
+5. 執行前檢查最終的 agy 參數不含禁止旗標（清單見 `docs/preflight-results.md` A1），出現就回傳 `forbidden_flag`。`--model` 必傳，而且必須是 `gemini-` 開頭（使用者的 agy 預設模型可能是 Claude，見預檢 A2）。
+6. 保存 `stdout.txt`、`stderr.txt`、`agy.log`、`meta.json`。`meta.json` 記錄要求的模型、agy 解析的模型（取自 `--log-file` 的 `label="…"`，標明「伺服器端未確認」，找不到就填 `null`）、agy 版本、exit code、耗時、conversation_id、完整性檢查結果、`ws/` 中被新增的檔案、hook 的工具呼叫紀錄、實際執行的 agy 執行檔路徑。
+7. 解析步驟：只讀 JSON 外殼的 `structured_output`（`response` 是兩段 JSON 接在一起，不能用，見預檢 A5c）→ 依 schema 驗證 → 對每條 finding 檢查 `evidence` 是否出現在計畫本文（空白正規化後比對），結果寫入 `evidence_found`。外殼 `status` 不是 `SUCCESS`、`response` 為空而且 stderr 有 `print timeout`，或沒有 `structured_output`，各自對應下表的 status。
 8. stdout **只印一行**結果 JSON：`{"status": …, "verdict": …, "findings": […], "requested_model": …, "reported_model": …, "raw_dir": …}`。
 
 **status 與 exit code**：
@@ -221,7 +222,8 @@ python3 facet_review.py --self-check
 | `parse_error` / `schema_error` | 解析失敗或不符合 schema | 5 |
 | `workspace_modified` | 專案檔案在呼叫期間被改動 | 6 |
 | `secret_suspected` | 計畫中疑似含密鑰，未送出 | 7 |
-| `forbidden_flag` | 出現禁止旗標 | 8 |
+| `forbidden_flag` | 出現禁止旗標，或 `--model` 不合規 | 8 |
+| `plan_too_long` | prompt 超過 30,000 字元，未送出 | 9 |
 
 只有 `ok` 能進入仲裁。
 
@@ -262,9 +264,11 @@ while round < MAX_ROUNDS:
 
 ### 4.7 唯讀保障（多層防護）
 
+> 2026-10-17 依預檢 A5b 修訂：使用者的 agy 設定是 `toolPermission: always-proceed`，不加防護時 agy 會寫到工作目錄以外，`--sandbox` 與 `--mode plan` 都擋不住。原本的第 3 層「可用就加」已刪除，改成第 3 層「agy 端 hook」。
+
 1. **不給權限**：agy 的參數由包裝腳本寫死，加上禁止旗標清單；`guard_agy.py` 以 PreToolUse hook 擋掉繞過包裝腳本、直接執行 `agy` 的 Bash 指令。這個 hook 透過 skill frontmatter 的 `hooks` 設定，從 skill 被呼叫起到 session 結束都有效。
-2. **不給檔案**：agy 的工作目錄是空的暫存目錄，計畫內容透過 prompt 或 stdin 傳入，**審查者根本不需要讀 repo**（交接文件 §5 也要求證據只能引用計畫本身）。
-3. **可用就加**：Phase 1 若確認 `--sandbox`、`--mode plan` 或 settings 的 deny 規則在 `-p` 下有效，就加上去。
+2. **不給檔案**：agy 的工作目錄是空的暫存目錄，計畫內容放在 `-p` 參數裡，**審查者根本不需要讀 repo**（交接文件 §5 也要求證據只能引用計畫本身）。
+3. **agy 端 hook（主要防線）**：`ws/.agents/hooks.json` 放 PreToolUse hook，只放行 `finish`（`--json-schema` 的結果經由它交回）與 `wait`，其餘工具一律拒絕，包括讀檔、shell、子代理。hook 程式當掉或逾時也算拒絕（fail-closed）。預檢實測：寫檔工具與 PowerShell 寫檔都被擋下，送審仍能正常回傳。
 4. **事後偵測**：每次呼叫前後都比對 repo 快照。有變動就回報 `workspace_modified`，**整個迴圈立刻停止並告知使用者**。
    - 限制：偵測不到 `.gitignore` 中的檔案，也偵測不到 repo 以外的檔案；使用者自己同時在改檔也會誤報。這些都寫進 README 與摘要的「未覆蓋範圍」。
 
@@ -280,7 +284,7 @@ while round < MAX_ROUNDS:
 |---|---|---|
 | 最終計畫 + 審查摘要（§8 格式） | 計畫檔（`~/.claude/plans/…` 或 `plansDirectory`） | 透過 ExitPlanMode 呈現 |
 | 逐輪處置表、每輪 verdict、要求與實際模型 | 計畫檔附錄（`<!-- facet:appendix -->` 之後） | 不會送給審查者 |
-| prompt 原文、stdout/stderr、meta.json | `${TMPDIR:-/tmp}/facet/<session-id>/r{N}-{lens}/` | 在 repo 外；摘要附上這個路徑 |
+| prompt 原文、stdout/stderr、agy.log、meta.json | `<系統暫存目錄>/facet/<session-id>/r{N}-{lens}/` | 在 repo 外；摘要附上這個路徑 |
 
 ---
 
@@ -292,13 +296,15 @@ while round < MAX_ROUNDS:
 
 ### Phase 1：預檢（**本機**，交接文件步驟 A）
 
+> 2026-10-17 完成（A7 除外），結果與決定見 [`docs/preflight-results.md`](preflight-results.md)。A7 移到 Phase 3。
+
 結果寫入 `docs/preflight-results.md`，每項記錄指令、輸出摘要、結論。
 
 > macOS 預設沒有 `timeout`，下表的 `timeout 60` 可改用 `gtimeout 60`（`brew install coreutils`），或 `perl -e 'alarm 60; exec @ARGV' agy …`。
 
 | 步驟 | 指令或做法 | 要確認什麼 |
 |---|---|---|
-| A0 | `bash scripts/check_name_conflict.sh --project "$PWD"`（這支腳本還沒寫好的話，照 §1.2 的清單手動檢查），並在 Claude Code 輸入 `/facet` 看選單 | 沒有衝突；查好企業 managed 目錄的正確路徑 |
+| A0 | `python scripts/check_name_conflict.py --project "$PWD"`（這支腳本還沒寫好的話，照 §1.2 的清單手動檢查），並在 Claude Code 輸入 `/facet` 看選單 | 沒有衝突；查好企業 managed 目錄的正確路徑 |
 | A1 | `agy --version`；`agy --help > agy-help.txt 2>&1 < /dev/null` | 是否有 `-p`、`--model`、`--output-format`、`--json-schema`、`--print-timeout`、`--sandbox`、`--mode`、`--continue`、`--conversation`；哪些旗標屬於禁止清單 |
 | A2 | `agy models [--output-format json] < /dev/null`，外層加逾時 | Gemini 3.8 Flash 的精確 ID 或顯示名稱 |
 | A3 | 在空目錄執行 `timeout 60 agy -p "回覆 OK" --model <id> --output-format json < /dev/null > out.json 2> err.txt; echo $?`；另外 (a) 接管道 `\| cat`，(b) 用 Python `subprocess` 跑一次（模擬包裝腳本） | 不會卡住、stdout 不是空的、JSON 能解析、外殼裡有沒有模型欄位 |
@@ -328,7 +334,7 @@ while round < MAX_ROUNDS:
 3. `tests/fake_agy/*` 和 `tests/test_facet_review.py`：涵蓋所有 status，以及禁止旗標、密鑰掃描、證據比對、附錄標記截斷
 4. `skills/facet/SKILL.md`：依 §4.2，description 用 §1.1 的草稿
 5. `skills/facet/scripts/guard_agy.py`，並在 frontmatter 加上 `hooks`
-6. `scripts/check_name_conflict.sh`、`scripts/install.sh`（支援 `--project <dir>` 改裝到專案層）
+6. `scripts/check_name_conflict.py`、`scripts/install.py`（支援 `--project <dir>` 改裝到專案層）
 7. `README.md`
 
 **驗收**：
@@ -339,9 +345,10 @@ while round < MAX_ROUNDS:
 
 ### Phase 3：本機安裝與驗證
 
-1. `bash scripts/install.sh`：先做衝突檢查，有衝突就停
+1. `python scripts/install.py`：先做衝突檢查，有衝突就停
 2. `claude plugin validate ~/.claude/skills`：frontmatter 能正確解析
 3. 在 Claude Code 中用 `/skills` 確認看得到 `facet`，description 完整沒被截斷；用 `/context` 看 Skills 那一列
+4. A7（從 Phase 1 移過來）：使用者把 session 切到 Plan 模式，分別在 (a) 只有 skill 的 `allowed-tools`、(b) 另外在 settings 加權限規則的情況下執行 `facet_review.py --self-check` 與一次真的送審，確認會跳確認、被分類器擋下，還是直接執行；依結果定案 §4.2 的核准方式與 README 的說明
 
 ### Phase 4：觸發測試（提醒 1 的驗收）
 
@@ -363,7 +370,7 @@ while round < MAX_ROUNDS:
 | `agy` 逾時或失敗時明確回報，且不當成核准 | 三種注入：(a) `AGY_TIMEOUT=5` 配合會 sleep 的替身，(b) 輸出亂碼的替身，(c) 不存在的模型 ID。都要回報失敗、重試 1 次、依 D4 詢問，`meta.json` 中要求的模型兩次都一樣（沒換模型） |
 | 最終只呈現一份計畫，附審查摘要 | 對話中 ExitPlanMode 只呼叫一次；計畫檔末尾有 §8 格式的摘要 |
 | 全程沒有任何檔案被審查者修改 | 每個 `meta.json` 的完整性檢查都是 `unchanged`；開始前和結束後的 `git status --porcelain` 相同；另外用會在 repo 建檔的替身確認會觸發 `workspace_modified` 並停止 |
-| （新增）資料外送防護 | 在計畫中放假金鑰 `AKIAFAKEFAKEFAKEFAKE`，確認回報 `secret_suspected` 且沒有呼叫 agy |
+| （新增）資料外送防護 | 在計畫中放一個假的 AWS 存取金鑰（`AKIA` 開頭加 16 個大寫英數字，試跑時才組出來，不寫進任何檔案），確認回報 `secret_suspected` 且沒有呼叫 agy |
 
 ### Phase 6：收尾
 
